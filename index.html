@@ -1,0 +1,297 @@
+<!DOCTYPE html><html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Ônibus Simulator nos Estados do Brasil</title><style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    overflow:hidden;
+    background:#222;
+    font-family:Arial, sans-serif;
+}
+
+canvas{
+    display:block;
+    margin:auto;
+    background:#4caf50;
+}
+
+#hud{
+    position:absolute;
+    top:10px;
+    left:10px;
+    color:white;
+    font-size:20px;
+    background:rgba(0,0,0,0.5);
+    padding:10px;
+    border-radius:10px;
+}
+
+#controls{
+    position:absolute;
+    bottom:20px;
+    width:100%;
+    display:flex;
+    justify-content:space-between;
+    padding:20px;
+}
+
+.controlBtn{
+    width:90px;
+    height:90px;
+    border:none;
+    border-radius:50%;
+    background:rgba(255,255,255,0.3);
+    color:white;
+    font-size:30px;
+}
+
+#title{
+    position:absolute;
+    top:10px;
+    width:100%;
+    text-align:center;
+    color:white;
+    font-size:28px;
+    font-weight:bold;
+    text-shadow:2px 2px 5px black;
+}
+</style></head>
+<body><div id="title">Ônibus Simulator nos Estados do Brasil 🚍🇧🇷</div><div id="hud">
+Velocidade: <span id="speed">0</span> km/h<br>
+Passageiros: <span id="passengers">0</span><br>
+Dinheiro: R$ <span id="money">0</span>
+</div><div id="controls">
+<div>
+<button class="controlBtn" id="leftBtn">⬅️</button>
+<button class="controlBtn" id="rightBtn">➡️</button>
+</div><div>
+<button class="controlBtn" id="brakeBtn">🛑</button>
+<button class="controlBtn" id="gasBtn">🚀</button>
+</div>
+</div><canvas id="gameCanvas" width="420" height="800"></canvas>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+let speed = 0;
+let passengers = 0;
+let money = 0;
+
+const bus = {
+    x: 180,
+    y: 600,
+    width: 60,
+    height: 120,
+    color: "yellow"
+};
+
+let roadLines = [];
+let cars = [];
+let busStops = [];
+
+for(let i=0;i<20;i++){
+    roadLines.push({x:205,y:i*50});
+}
+
+function spawnCar(){
+    const lanes = [80,180,280];
+
+    cars.push({
+        x: lanes[Math.floor(Math.random()*lanes.length)],
+        y: -150,
+        width:60,
+        height:120,
+        speed: 5 + Math.random()*3
+    });
+}
+
+function spawnBusStop(){
+    busStops.push({
+        x: 20,
+        y: -100,
+        width: 120,
+        height: 60
+    });
+}
+
+function drawRoad(){
+    ctx.fillStyle = "#555";
+    ctx.fillRect(50,0,320,800);
+
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 5;
+
+    for(let line of roadLines){
+        ctx.beginPath();
+        ctx.moveTo(line.x, line.y);
+        ctx.lineTo(line.x, line.y+30);
+        ctx.stroke();
+
+        line.y += speed;
+
+        if(line.y > 800){
+            line.y = -30;
+        }
+    }
+}
+
+function drawBus(){
+    ctx.fillStyle = bus.color;
+    ctx.fillRect(bus.x,bus.y,bus.width,bus.height);
+
+    ctx.fillStyle = "black";
+
+    ctx.fillRect(bus.x+10,bus.y+10,40,25);
+
+    ctx.fillRect(bus.x-5,bus.y+20,10,25);
+    ctx.fillRect(bus.x-5,bus.y+80,10,25);
+
+    ctx.fillRect(bus.x+55,bus.y+20,10,25);
+    ctx.fillRect(bus.x+55,bus.y+80,10,25);
+}
+
+function drawCars(){
+    for(let i=0;i<cars.length;i++){
+
+        let car = cars[i];
+
+        car.y += speed + car.speed;
+
+        ctx.fillStyle = "red";
+        ctx.fillRect(car.x, car.y, car.width, car.height);
+
+        if(checkCollision(bus, car)){
+            alert("🚨 Acidente! Game Over");
+            location.reload();
+        }
+
+        if(car.y > 900){
+            cars.splice(i,1);
+        }
+    }
+}
+
+function drawBusStops(){
+    for(let i=0;i<busStops.length;i++){
+
+        let stop = busStops[i];
+
+        stop.y += speed;
+
+        ctx.fillStyle = "blue";
+        ctx.fillRect(stop.x, stop.y, stop.width, stop.height);
+
+        ctx.fillStyle = "white";
+        ctx.font = "18px Arial";
+        ctx.fillText("PONTO", stop.x+20, stop.y+35);
+
+        if(checkCollision(bus, stop)){
+
+            if(speed < 2){
+                passengers += 5;
+                money += 25;
+
+                updateHUD();
+
+                busStops.splice(i,1);
+            }
+        }
+    }
+}
+
+function checkCollision(a,b){
+    return (
+        a.x < b.x + b.width &&
+        a.x + a.width > b.x &&
+        a.y < b.y + b.height &&
+        a.y + a.height > b.y
+    );
+}
+
+function updateHUD(){
+    document.getElementById("speed").innerText = Math.floor(speed*10);
+    document.getElementById("passengers").innerText = passengers;
+    document.getElementById("money").innerText = money;
+}
+
+function gameLoop(){
+
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    drawRoad();
+
+    drawBus();
+
+    drawCars();
+
+    drawBusStops();
+
+    requestAnimationFrame(gameLoop);
+}
+
+// Controles Android
+
+document.getElementById("leftBtn").addEventListener("touchstart", ()=>{
+    bus.x -= 30;
+});
+
+document.getElementById("rightBtn").addEventListener("touchstart", ()=>{
+    bus.x += 30;
+});
+
+document.getElementById("gasBtn").addEventListener("touchstart", ()=>{
+    if(speed < 10){
+        speed += 1;
+        updateHUD();
+    }
+});
+
+document.getElementById("brakeBtn").addEventListener("touchstart", ()=>{
+    if(speed > 0){
+        speed -= 1;
+        updateHUD();
+    }
+});
+
+// Teclado PC
+
+document.addEventListener("keydown", (e)=>{
+
+    if(e.key === "ArrowLeft"){
+        bus.x -= 20;
+    }
+
+    if(e.key === "ArrowRight"){
+        bus.x += 20;
+    }
+
+    if(e.key === "ArrowUp"){
+        if(speed < 10){
+            speed += 1;
+        }
+    }
+
+    if(e.key === "ArrowDown"){
+        if(speed > 0){
+            speed -= 1;
+        }
+    }
+
+    updateHUD();
+});
+
+setInterval(spawnCar, 2000);
+setInterval(spawnBusStop, 5000);
+
+updateHUD();
+gameLoop();
+
+</script></body>
+</html>
